@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -53,3 +56,25 @@ jobs:
           name: echeo-captures
           path: app/src/test/snapshots/images/*.png
           if-no-files-found: ignore
+
+      # APK téléchargeable depuis la page « Releases » (aussi depuis le téléphone).
+      - name: Publier la version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v0.1.${GITHUB_RUN_NUMBER}" out/*.apk \
+            --title "Echeo 0.1.${GITHUB_RUN_NUMBER}" \
+            --notes "Compilation automatique de ${GITHUB_SHA::7}."
+
+      # Dernier APK et dernières captures, sur la branche « builds ».
+      - name: Publier sur la branche builds
+        if: always()
+        run: |
+          mkdir -p pub
+          cp out/*.apk pub/ 2>/dev/null || true
+          cp app/src/test/snapshots/images/*.png pub/ 2>/dev/null || true
+          cd pub
+          git init -q -b builds
+          git add -A
+          git -c user.name="github-actions" -c user.email="actions@github.com" commit -q -m "Compilation ${GITHUB_RUN_NUMBER}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" builds
