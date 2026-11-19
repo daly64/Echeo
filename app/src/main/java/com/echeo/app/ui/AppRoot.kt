@@ -27,8 +27,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.echeo.app.data.BackupCodec
 import com.echeo.app.data.LicenceConfig
-import com.echeo.app.data.NetworkUnavailable
-import com.echeo.app.data.isOnline
 import com.echeo.app.domain.formatDay
 import com.echeo.app.domain.reminderText
 import com.echeo.app.notify.ExpiryWorker
@@ -119,10 +117,6 @@ fun AppRoot(vm: AppViewModel) {
     /** Décide où aller au démarrage et à chaque retour au premier plan. */
     fun startFlow() {
         scope.launch {
-            if (!isOnline(ctx)) {
-                replaceAll(Route.Offline)
-                return@launch
-            }
             if (!vm.settings.onboardingDone) {
                 replaceAll(Route.Welcome(0))
                 return@launch
@@ -134,7 +128,7 @@ fun AppRoot(vm: AppViewModel) {
                     return@launch
                 }
                 vm.licence.verify(key).onFailure { e ->
-                    replaceAll(if (e is NetworkUnavailable) Route.Offline else Route.LicenceInvalid(e.message ?: "Licence non valide."))
+                    replaceAll(Route.LicenceInvalid(e.message ?: "Licence non valide."))
                     return@launch
                 }
             }
@@ -152,10 +146,6 @@ fun AppRoot(vm: AppViewModel) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 vm.refreshDate()
-                val current = stack.lastOrNull()
-                if (current != null && current != Route.Splash && current != Route.Offline && !isOnline(ctx)) {
-                    replaceAll(Route.Offline)
-                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

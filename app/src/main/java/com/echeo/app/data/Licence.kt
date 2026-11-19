@@ -1,30 +1,38 @@
 package com.echeo.app.data
 
 import android.content.Context
-import android.provider.Settings as AndroidSettings
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.echeo.app.domain.formatDay
 import org.json.JSONObject
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
+import java.security.KeyFactory
 import java.security.MessageDigest
+import java.security.Signature
+import java.security.spec.X509EncodedKeySpec
+import java.time.LocalDate
+import android.provider.Settings as AndroidSettings
 
 object LicenceConfig {
-    /** Passer à true une fois le serveur d'activation en service. */
+    /** true : la licence est vérifiée à chaque ouverture. Passer à true une fois PUBLIC_KEY renseignée. */
     const val ENFORCED = false
 
-    /** Adresse du serveur d'activation. Vide tant qu'il n'est pas déployé. */
-    const val SERVER_URL = ""
+    /** Clé publique du générateur (base64, format SPKI). Donnée par `echeo_licence.py keygen`. */
+    const val PUBLIC_KEY = ""
+
+    /** Durée de validité d'une clé, en mois après sa génération. */
+    const val VALID_MONTHS = 1L
+
+    const val PREFIX = "ECH1"
 }
 
-/** Pas de connexion Internet : l'app ne peut pas vérifier la licence. */
-class NetworkUnavailable : IOException("Connexion Internet requise")
-
-/** Le serveur refuse la clé (invalide, révoquée ou liée à un autre téléphone). */
+/** La clé est refusée : le message explique pourquoi, il est affiché à l'utilisateur. */
 class LicenceRejected(message: String) : Exception(message)
 
+/**
+ * Vérifie une clé de licence sans serveur. Une clé contient l'ID du téléphone et la date
+ * de génération, signées avec la clé privée du générateur. L'app ne connaît que la clé publique.
+ */
 class LicenceService(private val context: Context) {
+
+    private val prefs = context.getSharedPreferences("echeo_licence", Context.MODE_PRIVATE)
 
     /** Identifiant stable du téléphone, au format ECH-XXXX-XXXX. */
     fun deviceId(): String {
@@ -35,31 +43,56 @@ class LicenceService(private val context: Context) {
         return "ECH-${hex.substring(0, 4)}-${hex.substring(4, 8)}"
     }
 
-    suspend fun activate(key: String): Result<Unit> = call("activate", key)
+    /** Vérifie une clé saisie à l'activation. */
+    fun activate(key: String): Result<Unit> = verify(key)
 
-    suspend fun verify(key: String): Result<Unit> = call("verify", key)
+    /** Vérifie une clé déjà enregistrée, à chaque ouverture de l'app. */
+    fun verify(key: String): Result<Unit> = try {
+        check(key.trim())
+        Result.success(Unit)
+    } catch (e: LicenceRejected) {
+        Result.failure(e)
+    } catch (e: Exception) {
+        Result.failure(LicenceRejected("Clé de licence invalide."))
+    }
 
-    private suspend fun call(path: String, key: String): Result<Unit> = withContext(Dispatchers.IO) {
-        if (LicenceConfig.SERVER_URL.isBlank()) {
-            return@withContext Result.failure(LicenceRejected("Serveur d'activation non configuré."))
+    private fun check(key: String) {
+        if (LicenceConfig.PUBLIC_KEY.isBlank()) throw LicenceRejected("Clé publique non configurée.")
+        val parts = key.split(".")
+        if (parts.size != 3 || parts[0] != LicenceConfig.PREFIX) throw LicenceRejected("Clé de licence invalide.")
+
+        val payload = java.util.Base64.getUrlDecoder().decode(parts[1])
+        val signature = java.util.Base64.getUrlDecoder().decode(parts[2])
+        val publicKey = KeyFactory.getInstance("EC").generatePublic(
+            X509EncodedKeySpec(java.util.Base64.getDecoder().decode(LicenceConfig.PUBLIC_KEY)),
+        )
+        val valid = Signature.getInstance("SHA256withECDSA").run {
+            initVerify(publicKey)
+            update(payload)
+            verify(signature)
         }
-        try {
-            val conn = (URL("${LicenceConfig.SERVER_URL}/$path").openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                connectTimeout = 8_000
-                readTimeout = 8_000
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json")
-            }
-            val payload = JSONObject().put("key", key).put("deviceId", deviceId()).toString()
-            conn.outputStream.use { it.write(payload.toByteArray()) }
-            val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
-            val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            val status = runCatching { JSONObject(body).optString("status") }.getOrDefault("")
-            if (status == "ok") Result.success(Unit)
-            else Result.failure(LicenceRejected("Cette licence n'est pas valide."))
-        } catch (e: IOException) {
-            Result.failure(NetworkUnavailable())
+        if (!valid) throw LicenceRejected("Clé de licence invalide.")
+
+        val json = JSONObject(String(payload, Charsets.UTF_8))
+        if (json.getString("d") != deviceId()) {
+            throw LicenceRejected("Cette licence est liée à un autre téléphone.")
         }
+        val issued = LocalDate.ofEpochDay(json.getLong("i"))
+        val expiry = issued.plusMonths(LicenceConfig.VALID_MONTHS)
+        val today = LocalDate.now()
+
+        // Empêche de prolonger la licence en reculant la date du téléphone.
+        val lastSeen = prefs.getLong(KEY_LAST_SEEN, 0L)
+        if (today.toEpochDay() < lastSeen || today.isBefore(issued)) {
+            throw LicenceRejected("La date du téléphone semble incorrecte.")
+        }
+        if (today.isAfter(expiry)) {
+            throw LicenceRejected("Licence expirée le ${formatDay(expiry.toEpochDay())}. Demandez une nouvelle clé.")
+        }
+        prefs.edit().putLong(KEY_LAST_SEEN, today.toEpochDay()).apply()
+    }
+
+    private companion object {
+        const val KEY_LAST_SEEN = "last_seen_day"
     }
 }
