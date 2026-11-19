@@ -9,7 +9,7 @@ Installation (une fois) :  pip install cryptography
 
   python echeo_licence.py issue ECH-XXXX-XXXX
       Génère une clé pour le téléphone dont l'ID est ECH-XXXX-XXXX.
-      La clé est valable 1 mois à partir d'aujourd'hui. Chaque clé émise
+      La clé est valable 1 an à partir d'aujourd'hui. Chaque clé émise
       est aussi notée dans keys/historique.txt pour suivre les copies.
 """
 import base64
@@ -27,7 +27,7 @@ KEY_DIR = Path(__file__).resolve().parent / "keys"
 PRIVATE = KEY_DIR / "private.pem"
 HISTORY = KEY_DIR / "historique.txt"
 PREFIX = "ECH1"
-VALID_MONTHS = 1
+VALID_MONTHS = 12
 DEVICE_RE = re.compile(r"ECH-[0-9A-F]{4}-[0-9A-F]{4}")
 
 

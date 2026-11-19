@@ -17,8 +17,8 @@ object LicenceConfig {
     /** Clé publique du générateur (base64, format SPKI). Donnée par `echeo_licence.py keygen`. */
     const val PUBLIC_KEY = ""
 
-    /** Durée de validité d'une clé, en mois après sa génération. */
-    const val VALID_MONTHS = 1L
+    /** Durée de validité d'une clé, en mois après sa génération (12 = un an). */
+    const val VALID_MONTHS = 12L
 
     const val PREFIX = "ECH1"
 }
