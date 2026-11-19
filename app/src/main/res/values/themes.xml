@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bleu_nuit">#0F2A4A</color>
+    <color name="turquoise">#19B5A5</color>
+    <color name="gris_clair">#F1F4F8</color>
+
+    <style name="Theme.Echeo" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/gris_clair</item>
+        <item name="android:statusBarColor">@color/bleu_nuit</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>
