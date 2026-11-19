@@ -1,31 +1,32 @@
 package com.echeo.app
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.echeo.app.ui.MainScreen
-import com.echeo.app.ui.MainViewModel
+import com.echeo.app.ui.AppRoot
+import com.echeo.app.ui.AppViewModel
 import com.echeo.app.ui.theme.EcheoTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: MainViewModel by viewModels { MainViewModel.factory(application as EcheoApp) }
+    private val viewModel: AppViewModel by viewModels { AppViewModel.factory(application as EcheoApp) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enterFullScreen()
-        setContent {
-            EcheoTheme { MainScreen(viewModel) }
+        if (Build.VERSION.SDK_INT >= 33) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        viewModel.refreshDate()
+        setContent {
+            EcheoTheme { AppRoot(viewModel) }
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

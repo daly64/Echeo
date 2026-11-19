@@ -1,12 +1,10 @@
 package com.echeo.app.data
 
 import androidx.room.ColumnInfo
-import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import androidx.room.Relation
 
 /** Un client de la boutique : nom et téléphone. */
 @Entity(tableName = "clients")
@@ -26,7 +24,7 @@ data class SubscriptionTypeEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val durations: String = "1,3,6,12",
-    /** Prix facultatif, en dinars. */
+    /** Prix facultatif. */
     val price: Double? = null,
     /** Lettre ou symbole affiché comme icône. */
     val icon: String,
@@ -91,20 +89,4 @@ data class RenewalEntity(
     @ColumnInfo(name = "new_expiry_day") val newExpiryDay: Long,
     /** Montant payé, facultatif. */
     val amount: Double? = null,
-)
-
-data class SubscriptionWithType(
-    @Embedded val subscription: SubscriptionEntity,
-    @Relation(parentColumn = "type_id", entityColumn = "id")
-    val type: SubscriptionTypeEntity,
-)
-
-data class ClientWithSubscriptions(
-    @Embedded val client: ClientEntity,
-    @Relation(
-        entity = SubscriptionEntity::class,
-        parentColumn = "id",
-        entityColumn = "client_id",
-    )
-    val subscriptions: List<SubscriptionWithType>,
 )
