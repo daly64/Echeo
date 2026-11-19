@@ -8,27 +8,30 @@ import java.security.MessageDigest
 import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
 import java.time.LocalDate
+import java.util.Base64
 import android.provider.Settings as AndroidSettings
 
 object LicenceConfig {
     /** true : la licence est vérifiée à chaque ouverture. Passer à true une fois PUBLIC_KEY renseignée. */
     const val ENFORCED = false
 
-    /** Clé publique du générateur (base64, format SPKI). Donnée par `echeo_licence.py keygen`. */
+    /** Clé publique de Forge Licence pour Echeo (base64, format SPKI). */
     const val PUBLIC_KEY = ""
 
-    /** Durée de validité d'une clé, en mois après sa génération (12 = un an). */
-    const val VALID_MONTHS = 12L
+    /** Nom de l'application dans les clés émises par Forge Licence. */
+    const val APP_CODE = "echeo"
 
-    const val PREFIX = "ECH1"
+    /** Préfixe des clés émises par Forge Licence. */
+    const val PREFIX = "LIC1"
 }
 
 /** La clé est refusée : le message explique pourquoi, il est affiché à l'utilisateur. */
 class LicenceRejected(message: String) : Exception(message)
 
 /**
- * Vérifie une clé de licence sans serveur. Une clé contient l'ID du téléphone et la date
- * de génération, signées avec la clé privée du générateur. L'app ne connaît que la clé publique.
+ * Vérifie une clé émise par Forge Licence, sans serveur ni Internet.
+ * La clé contient l'app, l'ID du téléphone, la date d'émission et la date d'expiration,
+ * signés avec la clé privée de Forge Licence. L'app ne connaît que la clé publique.
  */
 class LicenceService(private val context: Context) {
 
@@ -61,10 +64,10 @@ class LicenceService(private val context: Context) {
         val parts = key.split(".")
         if (parts.size != 3 || parts[0] != LicenceConfig.PREFIX) throw LicenceRejected("Clé de licence invalide.")
 
-        val payload = java.util.Base64.getUrlDecoder().decode(parts[1])
-        val signature = java.util.Base64.getUrlDecoder().decode(parts[2])
+        val payload = Base64.getUrlDecoder().decode(parts[1])
+        val signature = Base64.getUrlDecoder().decode(parts[2])
         val publicKey = KeyFactory.getInstance("EC").generatePublic(
-            X509EncodedKeySpec(java.util.Base64.getDecoder().decode(LicenceConfig.PUBLIC_KEY)),
+            X509EncodedKeySpec(Base64.getDecoder().decode(LicenceConfig.PUBLIC_KEY)),
         )
         val valid = Signature.getInstance("SHA256withECDSA").run {
             initVerify(publicKey)
@@ -74,11 +77,12 @@ class LicenceService(private val context: Context) {
         if (!valid) throw LicenceRejected("Clé de licence invalide.")
 
         val json = JSONObject(String(payload, Charsets.UTF_8))
+        if (json.getString("a") != LicenceConfig.APP_CODE) throw LicenceRejected("Cette clé ne concerne pas Echeo.")
         if (json.getString("d") != deviceId()) {
             throw LicenceRejected("Cette licence est liée à un autre téléphone.")
         }
         val issued = LocalDate.ofEpochDay(json.getLong("i"))
-        val expiry = issued.plusMonths(LicenceConfig.VALID_MONTHS)
+        val expiry = LocalDate.ofEpochDay(json.getLong("e"))
         val today = LocalDate.now()
 
         // Empêche de prolonger la licence en reculant la date du téléphone.

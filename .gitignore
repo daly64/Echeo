@@ -7,5 +7,3 @@ local.properties
 captures/
 .kotlin/
 
-# Clés privées de licence : ne jamais publier
-tools/licence/keys/
