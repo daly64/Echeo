@@ -35,11 +35,10 @@ fun ActivationScreen(
     busy: Boolean,
     waiting: Boolean,
     onCopy: () -> Unit,
-    onRequest: (String) -> Unit,
+    onRequest: () -> Unit,
     onCancelRequest: () -> Unit,
     onActivate: (String) -> Unit,
 ) {
-    var shop by remember { mutableStateOf("") }
     var key by remember { mutableStateOf("") }
     var manual by remember { mutableStateOf(false) }
     Column(
@@ -77,22 +76,14 @@ fun ActivationScreen(
             SecondaryButton("Annuler la demande", onCancelRequest, Modifier.fillMaxWidth())
         } else {
             Text(
-                "Echeo ne fonctionne qu'avec une licence. Indiquez le nom de votre boutique et demandez l'activation.",
+                "Echeo ne fonctionne qu'avec une licence. Touchez le bouton : votre demande part toute seule.",
                 style = MaterialTheme.typography.bodyLarge.copy(color = EcheoColors.TexteSecondaire),
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(24.dp))
-            Field(
-                label = "Nom de la boutique",
-                value = shop,
-                onChange = { shop = it.take(60) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = "Ex. Boutique Salma",
-            )
-            Spacer(Modifier.height(16.dp))
             PrimaryButton(
                 text = if (busy) "Envoi…" else "Demander l'activation",
-                onClick = { if (!busy && shop.isNotBlank()) onRequest(shop.trim()) },
+                onClick = { if (!busy) onRequest() },
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(24.dp))

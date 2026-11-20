@@ -230,11 +230,11 @@ fun AppRoot(vm: AppViewModel) {
                     busy = busy,
                     waiting = waiting,
                     onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
-                    onRequest = { shop ->
+                    onRequest = {
                         scope.launch {
                             busy = true
                             activationError = null
-                            vm.licence.requestActivation(shop)
+                            vm.licence.requestActivation()
                                 .onSuccess { waiting = true }
                                 .onFailure { activationError = it.message ?: "Demande impossible." }
                             busy = false

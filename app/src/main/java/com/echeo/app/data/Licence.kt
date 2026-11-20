@@ -57,12 +57,12 @@ class LicenceService(private val context: Context) {
         prefs.edit().putBoolean(P_REQUESTED, false).apply()
     }
 
-    /** Envoie au serveur une demande d'activation (code du téléphone + nom de la boutique). */
-    suspend fun requestActivation(shopName: String): Result<Unit> = withContext(Dispatchers.IO) {
+    /** Envoie au serveur une demande d'activation : seulement le code du téléphone, le nom de la boutique est saisi par le fournisseur. */
+    suspend fun requestActivation(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val answer = post(
                 "/api/request",
-                JSONObject().put("app", LicenceConfig.APP_CODE).put("device", deviceId()).put("shopName", shopName.trim()),
+                JSONObject().put("app", LicenceConfig.APP_CODE).put("device", deviceId()),
             )
             if (!answer.optBoolean("ok")) throw LicenceRejected("Demande impossible pour le moment. Réessayez plus tard.")
             prefs.edit().putBoolean(P_REQUESTED, true).apply()
