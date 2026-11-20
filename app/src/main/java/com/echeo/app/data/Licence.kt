@@ -22,9 +22,6 @@ object LicenceConfig {
 
     /** Serveur de licences de Forge Licence. */
     const val SERVER = "https://forge-licence-api.vercel.app"
-
-    /** Sans Internet, la dernière vérification réussie reste valable ce nombre de jours. */
-    const val OFFLINE_GRACE_DAYS = 7L
 }
 
 /** La licence est refusée : le message explique pourquoi, il est affiché à l'utilisateur. */
@@ -38,7 +35,7 @@ data class SerialLicence(val issued: LocalDate, val expiry: LocalDate, val lifet
 
 /**
  * L'activation et la vérification se font en ligne. Le résultat de la dernière vérification est gardé
- * sur le téléphone : sans Internet, Echeo reste utilisable quelques jours (OFFLINE_GRACE_DAYS).
+ * sur le téléphone. Sans Internet, Echeo ne s'ouvre pas.
  */
 class LicenceService(private val context: Context) {
 
@@ -146,21 +143,9 @@ class LicenceService(private val context: Context) {
         return SerialLicence(LocalDate.ofEpochDay(prefs.getLong(P_ISSUED, 0L)), expiry, lifetime)
     }
 
-    /** Sans Internet : la dernière vérification réussie reste valable quelques jours. */
-    private fun offline(): Result<SerialLicence> {
-        val last = prefs.getLong(P_LAST_OK, 0L)
-        val now = System.currentTimeMillis()
-        val licence = info(if (prefs.getBoolean(P_VALID, false)) "ok" else null)
-        val fresh = last in 1..now && now - last <= LicenceConfig.OFFLINE_GRACE_DAYS * DAY_MS
-        val running = licence != null && (licence.lifetime || !LocalDate.now().isAfter(licence.expiry))
-        return if (licence != null && fresh && running) {
-            Result.success(licence)
-        } else {
-            Result.failure(
-                LicenceRejected("Connexion requise pour vérifier la licence. Activez Internet puis réessayez."),
-            )
-        }
-    }
+    /** Sans Internet, Echeo ne s'ouvre pas : la vérification en ligne est obligatoire à chaque ouverture. */
+    private fun offline(): Result<SerialLicence> =
+        Result.failure(LicenceRejected("Connexion requise pour ouvrir Echeo. Activez Internet puis réessayez."))
 
     private fun accept(answer: JSONObject): SerialLicence {
         val zone = ZoneId.systemDefault()

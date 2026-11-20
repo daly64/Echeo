@@ -20,5 +20,5 @@ Echeo ne fonctionne pas sans clé d'activation (pas d'essai). La clé est au sty
 
 Les clés sont émises par l'app **Forge Licence**, qui les garde sur un serveur en ligne.
 L'activation et la vérification se font par Internet (identifiant d'app `echeo`, code du téléphone envoyé au serveur).
-La durée démarre à l'activation. Sans Internet, la dernière vérification réussie reste valable 7 jours.
+La durée démarre à l'activation. Echeo ne s'ouvre qu'avec Internet : la vérification se fait à chaque ouverture, sans délai de grâce.
 Une licence peut être bloquée à distance par Forge Licence. Aucun secret n'est nécessaire à la compilation.
