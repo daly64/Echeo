@@ -90,7 +90,7 @@ fun AppRoot(vm: AppViewModel) {
     val licenceKey by vm.settings.licenceKey.collectAsState()
     val lastBackup by vm.settings.lastBackupAt.collectAsState()
     val deviceId = remember { vm.licence.deviceId() }
-    val licenceExpiry = remember(licenceKey) { vm.licence.info(licenceKey)?.let { formatDay(it.expiry.toEpochDay()) } }
+    val licenceExpiry = remember(licenceKey) { vm.licence.info(licenceKey)?.let { if (it.lifetime) "à vie" else formatDay(it.expiry.toEpochDay()) } }
 
     val stack = remember { mutableStateListOf<Route>(Route.Splash) }
     val route = stack.last()

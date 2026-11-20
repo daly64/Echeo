@@ -54,7 +54,7 @@ fun SettingsScreen(
                 RowDivider()
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     InfoLine("Code du téléphone", deviceId)
-                    if (licenceExpiry != null) InfoLine("Valable jusqu'au", licenceExpiry)
+                    if (licenceExpiry == "à vie") InfoLine("Validité", "À vie") else if (licenceExpiry != null) InfoLine("Valable jusqu'au", licenceExpiry)
                 }
                 RowDivider()
                 NavRow("Copier le code du téléphone", null, onCopy)

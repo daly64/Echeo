@@ -18,6 +18,7 @@ Echeo ne fonctionne pas sans clé d'activation (pas d'essai). La clé est au sty
 (20 caractères, ex. `K7QM2-X9TRA-4WNBH-6ZPE3`), liée au code du téléphone (8 caractères) et renouvelable :
 à l'expiration, l'app se bloque jusqu'à la saisie d'une nouvelle clé (les données sont conservées).
 
-Les clés sont émises par l'app **Forge Licence**. Elle crée un secret pour Echeo ; il faut le copier une seule fois
-dans *Settings → Secrets → Actions* sous le nom `ECHEO_LICENCE_SECRET`, puis relancer la compilation.
-Sans ce secret, la version compilée refuse toutes les clés.
+Les clés sont émises par l'app **Forge Licence**, qui les garde sur un serveur en ligne.
+L'activation et la vérification se font par Internet (identifiant d'app `echeo`, code du téléphone envoyé au serveur).
+La durée démarre à l'activation. Sans Internet, la dernière vérification réussie reste valable 7 jours.
+Une licence peut être bloquée à distance par Forge Licence. Aucun secret n'est nécessaire à la compilation.

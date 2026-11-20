@@ -47,6 +47,7 @@ object ExpiryNotifier {
     fun runLicence(app: EcheoApp) {
         if (!canNotify(app)) return
         val info = app.licence.info(app.settings.licenceKey.value) ?: return
+        if (info.lifetime) return
         val left = info.expiry.toEpochDay() - LocalDate.now().toEpochDay()
         if (left < 0 || left > LICENCE_WARN_DAYS) return
         val title = if (left == 0L) "Votre licence Echeo expire aujourd'hui" else "Votre licence Echeo expire dans $left jours"

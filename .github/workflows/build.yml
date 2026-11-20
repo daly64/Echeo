@@ -35,19 +35,7 @@ jobs:
             echo "Signature : clé de développement du dépôt"
           fi
 
-      - name: Secret de licence (obligatoire pour que l'app accepte des clés)
-        env:
-          LICENCE_SECRET: ${{ secrets.ECHEO_LICENCE_SECRET }}
-        run: |
-          if [ -n "$LICENCE_SECRET" ]; then
-            echo "Licence : secret configuré"
-          else
-            echo "::warning::ECHEO_LICENCE_SECRET absent : cette version d'Echeo refusera toutes les clés. Ajouter le secret dans Settings > Secrets > Actions (valeur copiée depuis Forge Licence)."
-          fi
-
       - name: Compiler l'APK
-        env:
-          ECHEO_LICENCE_SECRET: ${{ secrets.ECHEO_LICENCE_SECRET }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease
