@@ -33,11 +33,15 @@ fun ActivationScreen(
     deviceId: String,
     error: String?,
     busy: Boolean,
+    waiting: Boolean,
     onCopy: () -> Unit,
-    onSendCode: () -> Unit,
+    onRequest: (String) -> Unit,
+    onCancelRequest: () -> Unit,
     onActivate: (String) -> Unit,
 ) {
+    var shop by remember { mutableStateOf("") }
     var key by remember { mutableStateOf("") }
+    var manual by remember { mutableStateOf(false) }
     Column(
         Modifier
             .fillMaxSize()
@@ -59,36 +63,65 @@ fun ActivationScreen(
         Spacer(Modifier.height(20.dp))
         Text("Activer Echeo", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
-        Text(
-            "Echeo ne fonctionne qu'avec une clé d'activation. Envoyez le code de ce téléphone pour recevoir votre clé.",
-            style = MaterialTheme.typography.bodyLarge.copy(color = EcheoColors.TexteSecondaire),
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(24.dp))
-        IdBox(deviceId)
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            SecondaryButton("Copier le code", onCopy, Modifier.weight(1f))
-            SecondaryButton("Envoyer par WhatsApp", onSendCode, Modifier.weight(1f))
+        if (waiting) {
+            Text(
+                "Demande envoyée. Votre fournisseur doit la valider : l'activation se fera toute seule, gardez cet écran ouvert.",
+                style = MaterialTheme.typography.bodyLarge.copy(color = EcheoColors.TexteSecondaire),
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(24.dp))
+            IdBox(deviceId)
+            Spacer(Modifier.height(16.dp))
+            Text("En attente de validation…", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(16.dp))
+            SecondaryButton("Annuler la demande", onCancelRequest, Modifier.fillMaxWidth())
+        } else {
+            Text(
+                "Echeo ne fonctionne qu'avec une licence. Indiquez le nom de votre boutique et demandez l'activation.",
+                style = MaterialTheme.typography.bodyLarge.copy(color = EcheoColors.TexteSecondaire),
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(24.dp))
+            Field(
+                label = "Nom de la boutique",
+                value = shop,
+                onChange = { shop = it.take(60) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = "Ex. Boutique Salma",
+            )
+            Spacer(Modifier.height(16.dp))
+            PrimaryButton(
+                text = if (busy) "Envoi…" else "Demander l'activation",
+                onClick = { if (!busy && shop.isNotBlank()) onRequest(shop.trim()) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(24.dp))
+            IdBox(deviceId)
+            Spacer(Modifier.height(10.dp))
+            SecondaryButton("Copier le code", onCopy, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(10.dp))
+            SecondaryButton(if (manual) "Masquer la saisie de clé" else "J'ai déjà une clé", { manual = !manual }, Modifier.fillMaxWidth())
+            if (manual) {
+                Spacer(Modifier.height(16.dp))
+                Field(
+                    label = "Clé d'activation",
+                    value = key,
+                    onChange = { key = formatKey(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = "XXXXX-XXXXX-XXXXX-XXXXX",
+                )
+                Spacer(Modifier.height(12.dp))
+                PrimaryButton(
+                    text = if (busy) "Vérification…" else "Activer",
+                    onClick = { if (!busy && key.isNotBlank()) onActivate(key.trim()) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
-        Spacer(Modifier.height(24.dp))
-        Field(
-            label = "Clé d'activation",
-            value = key,
-            onChange = { key = formatKey(it) },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = "XXXXX-XXXXX-XXXXX-XXXXX",
-        )
         if (error != null) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
             Text(error, style = MaterialTheme.typography.bodyMedium.copy(color = EcheoColors.ExpireTexte), modifier = Modifier.fillMaxWidth())
         }
-        Spacer(Modifier.height(20.dp))
-        PrimaryButton(
-            text = if (busy) "Vérification…" else "Activer",
-            onClick = { if (!busy && key.isNotBlank()) onActivate(key.trim()) },
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }
 
@@ -110,7 +143,7 @@ fun LicenceInvalidScreen(
         ) {
             IdBox(deviceId)
             Spacer(Modifier.height(16.dp))
-            DarkButton("Saisir une nouvelle clé", onNewKey, Modifier.fillMaxWidth())
+            DarkButton("Demander une nouvelle clé", onNewKey, Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             SecondaryButton("Envoyer le code par WhatsApp", onSendCode, Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))

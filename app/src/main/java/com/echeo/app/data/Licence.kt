@@ -50,6 +50,56 @@ class LicenceService(private val context: Context) {
         return SerialKey.deviceCode(raw, LicenceConfig.APP_CODE)
     }
 
+    /** Une demande d'activation a été envoyée et attend la validation du fournisseur. */
+    fun hasPendingRequest(): Boolean = prefs.getBoolean(P_REQUESTED, false)
+
+    fun cancelRequest() {
+        prefs.edit().putBoolean(P_REQUESTED, false).apply()
+    }
+
+    /** Envoie au serveur une demande d'activation (code du téléphone + nom de la boutique). */
+    suspend fun requestActivation(shopName: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val answer = post(
+                "/api/request",
+                JSONObject().put("app", LicenceConfig.APP_CODE).put("device", deviceId()).put("shopName", shopName.trim()),
+            )
+            if (!answer.optBoolean("ok")) throw LicenceRejected("Demande impossible pour le moment. Réessayez plus tard.")
+            prefs.edit().putBoolean(P_REQUESTED, true).apply()
+            Result.success(Unit)
+        } catch (e: LicenceRejected) {
+            Result.failure(e)
+        } catch (e: IOException) {
+            Result.failure(LicenceRejected("Connexion impossible. Activez Internet puis réessayez."))
+        } catch (e: Exception) {
+            Result.failure(LicenceRejected("Demande impossible. Réessayez."))
+        }
+    }
+
+    /**
+     * Demande au serveur où en est la demande : succès avec la clé si elle est approuvée, succès sans clé si elle attend
+     * encore (ou sans Internet), échec si elle est refusée ou introuvable.
+     */
+    suspend fun claim(): Result<String?> = withContext(Dispatchers.IO) {
+        try {
+            val answer = post("/api/claim", JSONObject().put("app", LicenceConfig.APP_CODE).put("device", deviceId()))
+            when (answer.optString("status")) {
+                "approved" -> Result.success(answer.optString("key").ifBlank { null })
+                "rejected" -> {
+                    cancelRequest()
+                    Result.failure(LicenceRejected("Votre demande a été refusée. Contactez votre fournisseur."))
+                }
+                "none", "done" -> {
+                    cancelRequest()
+                    Result.failure(LicenceRejected("Demande introuvable. Faites une nouvelle demande."))
+                }
+                else -> Result.success(null)
+            }
+        } catch (e: Exception) {
+            Result.success(null)
+        }
+    }
+
     /** Active une clé saisie : le serveur la contrôle et démarre la durée. */
     suspend fun activate(key: String): Result<SerialLicence> = withContext(Dispatchers.IO) {
         try {
@@ -123,6 +173,7 @@ class LicenceService(private val context: Context) {
             .putLong(P_EXPIRY, expiry.toEpochDay())
             .putLong(P_ISSUED, if (prefs.contains(P_ISSUED)) prefs.getLong(P_ISSUED, today.toEpochDay()) else today.toEpochDay())
             .putLong(P_LAST_OK, System.currentTimeMillis())
+            .putBoolean(P_REQUESTED, false)
             .apply()
         return SerialLicence(LocalDate.ofEpochDay(prefs.getLong(P_ISSUED, today.toEpochDay())), expiry, lifetime)
     }
@@ -174,5 +225,6 @@ class LicenceService(private val context: Context) {
         const val P_EXPIRY = "expiry_day"
         const val P_ISSUED = "issued_day"
         const val P_LAST_OK = "last_ok_at"
+        const val P_REQUESTED = "requested"
     }
 }

@@ -95,14 +95,19 @@ class ScreenshotsTest {
 
     @Test
     fun activation() = paparazzi.snapshot {
-        EcheoTheme { ActivationScreen("7RFV-JX2C", null, false, {}, {}, {}) }
+        EcheoTheme { ActivationScreen("7RFV-JX2C", null, false, false, {}, {}, {}, {}) }
     }
 
     @Test
     fun activation_cle_refusee() = paparazzi.snapshot {
         EcheoTheme {
-            ActivationScreen("7RFV-JX2C", "Clé invalide, ou liée à un autre téléphone. Vérifiez la saisie.", false, {}, {}, {})
+            ActivationScreen("7RFV-JX2C", "Votre demande a été refusée. Contactez votre fournisseur.", false, false, {}, {}, {}, {})
         }
+    }
+
+    @Test
+    fun activation_en_attente() = paparazzi.snapshot {
+        EcheoTheme { ActivationScreen("7RFV-JX2C", null, false, true, {}, {}, {}, {}) }
     }
 
     @Test

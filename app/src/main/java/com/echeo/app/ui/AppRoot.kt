@@ -98,6 +98,7 @@ fun AppRoot(vm: AppViewModel) {
     var filter by rememberSaveable { mutableStateOf(ClientFilter.All) }
     var activationError by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var waiting by remember { mutableStateOf(vm.licence.hasPendingRequest()) }
     var pendingRestore by remember { mutableStateOf<String?>(null) }
 
     fun go(r: Route) {
@@ -134,6 +135,34 @@ fun AppRoot(vm: AppViewModel) {
                 }
             }
             replaceAll(Route.Main(Tab.Home))
+        }
+    }
+
+    // Demande envoyée : on interroge le serveur jusqu'à la décision, puis on active sans saisie.
+    LaunchedEffect(route, waiting) {
+        if (route != Route.Activation || !waiting) return@LaunchedEffect
+        var finished = false
+        while (!finished) {
+            val answer = vm.licence.claim()
+            val key = answer.getOrNull()
+            if (answer.isFailure) {
+                waiting = false
+                activationError = answer.exceptionOrNull()?.message
+                finished = true
+            } else if (key != null) {
+                val activated = vm.licence.activate(key)
+                if (activated.isSuccess) {
+                    vm.settings.setLicenceKey(key)
+                    waiting = false
+                    replaceAll(Route.Main(Tab.Home))
+                } else {
+                    waiting = false
+                    activationError = activated.exceptionOrNull()?.message
+                }
+                finished = true
+            } else {
+                delay(4000)
+            }
         }
     }
 
@@ -199,8 +228,22 @@ fun AppRoot(vm: AppViewModel) {
                     deviceId = deviceId,
                     error = activationError,
                     busy = busy,
+                    waiting = waiting,
                     onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
-                    onSendCode = { Actions.whatsappShare(ctx, "Bonjour, voici le code de mon téléphone pour activer Echeo : $deviceId") },
+                    onRequest = { shop ->
+                        scope.launch {
+                            busy = true
+                            activationError = null
+                            vm.licence.requestActivation(shop)
+                                .onSuccess { waiting = true }
+                                .onFailure { activationError = it.message ?: "Demande impossible." }
+                            busy = false
+                        }
+                    },
+                    onCancelRequest = {
+                        vm.licence.cancelRequest()
+                        waiting = false
+                    },
                     onActivate = { key ->
                         scope.launch {
                             busy = true
