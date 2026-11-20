@@ -24,12 +24,17 @@ import com.echeo.app.R
 import com.echeo.app.ui.components.*
 import com.echeo.app.ui.theme.EcheoColors
 
+/** Saisie de la clé : majuscules, 20 caractères, tirets tous les 5 caractères. */
+internal fun formatKey(raw: String): String =
+    raw.uppercase().filter { it.isLetterOrDigit() }.take(20).chunked(5).joinToString("-")
+
 @Composable
 fun ActivationScreen(
     deviceId: String,
     error: String?,
     busy: Boolean,
     onCopy: () -> Unit,
+    onSendCode: () -> Unit,
     onActivate: (String) -> Unit,
 ) {
     var key by remember { mutableStateOf("") }
@@ -55,21 +60,24 @@ fun ActivationScreen(
         Text("Activer Echeo", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Saisissez la clé de licence reçue. Elle est liée à ce téléphone.",
+            "Echeo ne fonctionne qu'avec une clé d'activation. Envoyez le code de ce téléphone pour recevoir votre clé.",
             style = MaterialTheme.typography.bodyLarge.copy(color = EcheoColors.TexteSecondaire),
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
         IdBox(deviceId)
         Spacer(Modifier.height(10.dp))
-        SecondaryButton("Copier l'ID", onCopy)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            SecondaryButton("Copier le code", onCopy, Modifier.weight(1f))
+            SecondaryButton("Envoyer par WhatsApp", onSendCode, Modifier.weight(1f))
+        }
         Spacer(Modifier.height(24.dp))
         Field(
-            label = "Clé de licence",
+            label = "Clé d'activation",
             value = key,
-            onChange = { key = it.uppercase() },
+            onChange = { key = formatKey(it) },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = "ECH-XXXX-XXXX-XXXX",
+            placeholder = "XXXXX-XXXXX-XXXXX-XXXXX",
         )
         if (error != null) {
             Spacer(Modifier.height(8.dp))
@@ -90,6 +98,7 @@ fun LicenceInvalidScreen(
     message: String,
     onNewKey: () -> Unit,
     onCopy: () -> Unit,
+    onSendCode: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(EcheoColors.GrisClair)) {
         CenteredMessage(
@@ -103,7 +112,9 @@ fun LicenceInvalidScreen(
             Spacer(Modifier.height(16.dp))
             DarkButton("Saisir une nouvelle clé", onNewKey, Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            SecondaryButton("Copier l'ID", onCopy, Modifier.fillMaxWidth())
+            SecondaryButton("Envoyer le code par WhatsApp", onSendCode, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            SecondaryButton("Copier le code", onCopy, Modifier.fillMaxWidth())
         }
     }
 }

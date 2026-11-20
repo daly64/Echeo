@@ -15,6 +15,10 @@ val buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
 val releaseKeystore = System.getenv("ECHEO_KEYSTORE_PATH")
 val releasePassword = System.getenv("ECHEO_KEYSTORE_PASSWORD")
 
+// Secret de licence partagé avec Forge Licence : il vient des secrets GitHub (ECHEO_LICENCE_SECRET)
+// et n'est jamais écrit dans le dépôt. Sans lui, aucune clé n'est acceptée.
+val licenceSecret = System.getenv("ECHEO_LICENCE_SECRET") ?: ""
+
 android {
     namespace = "com.echeo.app"
     compileSdk = 34
@@ -25,6 +29,7 @@ android {
         targetSdk = 34
         versionCode = buildNumber
         versionName = "0.1.$buildNumber"
+        buildConfigField("String", "LICENCE_SECRET", "\"$licenceSecret\"")
     }
 
     signingConfigs {
@@ -62,6 +67,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

@@ -35,11 +35,35 @@ object ExpiryNotifier {
         }
     }
 
+    private const val LICENCE_NOTIFICATION_ID = 999_999
+    private const val LICENCE_WARN_DAYS = 7
+
+    private fun canNotify(app: EcheoApp): Boolean =
+        Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    /** Prévient le gérant 7 jours avant la fin de la licence, pour qu'il demande une nouvelle clé à temps. */
+    @SuppressLint("MissingPermission")
+    fun runLicence(app: EcheoApp) {
+        if (!canNotify(app)) return
+        val info = app.licence.info(app.settings.licenceKey.value) ?: return
+        val left = info.expiry.toEpochDay() - LocalDate.now().toEpochDay()
+        if (left < 0 || left > LICENCE_WARN_DAYS) return
+        val title = if (left == 0L) "Votre licence Echeo expire aujourd'hui" else "Votre licence Echeo expire dans $left jours"
+        val tap = PendingIntent.getActivity(app, LICENCE_NOTIFICATION_ID, Intent(app, MainActivity::class.java), FLAGS)
+        val notification = NotificationCompat.Builder(app, CHANNEL)
+            .setSmallIcon(R.drawable.ic_bell)
+            .setContentTitle(title)
+            .setContentText("Demandez votre nouvelle clé avant le ${formatDay(info.expiry.toEpochDay())}.")
+            .setContentIntent(tap)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(app).notify(LICENCE_NOTIFICATION_ID, notification)
+    }
+
     @SuppressLint("MissingPermission")
     suspend fun run(app: EcheoApp) {
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return
+        if (!canNotify(app)) return
 
         val db = app.database
         val today = LocalDate.now().toEpochDay()

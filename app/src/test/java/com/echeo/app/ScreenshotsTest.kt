@@ -16,6 +16,9 @@ import com.echeo.app.ui.clients.ClientsContent
 import com.echeo.app.ui.components.EcheoBottomBar
 import com.echeo.app.ui.components.Tab
 import com.echeo.app.ui.dashboard.DashboardContent
+import com.echeo.app.ui.screens.ActivationScreen
+import com.echeo.app.ui.screens.LicenceInvalidScreen
+import com.echeo.app.ui.screens.SettingsScreen
 import com.echeo.app.ui.theme.EcheoColors
 import com.echeo.app.ui.theme.EcheoTheme
 import org.junit.Rule
@@ -87,6 +90,32 @@ class ScreenshotsTest {
     fun clients_etat_vide() = paparazzi.snapshot {
         Frame(Tab.Clients) {
             ClientsContent(emptyList(), 0, "", ClientFilter.All, {}, {}, {}, {})
+        }
+    }
+
+    @Test
+    fun activation() = paparazzi.snapshot {
+        EcheoTheme { ActivationScreen("7RFV-JX2C", null, false, {}, {}, {}) }
+    }
+
+    @Test
+    fun activation_cle_refusee() = paparazzi.snapshot {
+        EcheoTheme {
+            ActivationScreen("7RFV-JX2C", "Clé invalide, ou liée à un autre téléphone. Vérifiez la saisie.", false, {}, {}, {})
+        }
+    }
+
+    @Test
+    fun licence_non_valide() = paparazzi.snapshot {
+        EcheoTheme {
+            LicenceInvalidScreen("7RFV-JX2C", "Licence expirée le 20/11/2027. Demandez une nouvelle clé.", {}, {}, {})
+        }
+    }
+
+    @Test
+    fun parametres_licence() = paparazzi.snapshot {
+        Frame(Tab.Settings) {
+            SettingsScreen(5, 9, true, 11, "7RFV-JX2C", "051GR-YB6WG-XQG2Z-GH6KP", "20/11/2027", {}, {}, {}, {}, {}, {}, {}, {})
         }
     }
 }

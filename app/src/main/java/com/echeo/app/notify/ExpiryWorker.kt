@@ -18,6 +18,8 @@ class ExpiryWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     override suspend fun doWork(): Result {
         val app = applicationContext as EcheoApp
         if (app.settings.notifyEnabled.value) ExpiryNotifier.run(app)
+        // Le rappel de licence ne dépend pas du réglage des notifications d'abonnements.
+        ExpiryNotifier.runLicence(app)
         return Result.success()
     }
 

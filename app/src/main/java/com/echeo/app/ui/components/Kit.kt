@@ -284,7 +284,7 @@ fun IdBox(id: String) {
             .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("ID de l'appareil", style = MaterialTheme.typography.bodySmall.copy(color = EcheoColors.TexteSecondaire))
+        Text("Code du téléphone", style = MaterialTheme.typography.bodySmall.copy(color = EcheoColors.TexteSecondaire))
         Spacer(Modifier.height(4.dp))
         Text(
             id,

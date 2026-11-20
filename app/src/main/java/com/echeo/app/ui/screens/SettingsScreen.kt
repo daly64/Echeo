@@ -28,6 +28,7 @@ fun SettingsScreen(
     typesCount: Int,
     deviceId: String,
     licenceKey: String?,
+    licenceExpiry: String?,
     onWarnDays: (Int) -> Unit,
     onReminderHour: (Int) -> Unit,
     onNotify: (Boolean) -> Unit,
@@ -51,11 +52,12 @@ fun SettingsScreen(
             Group("Licence") {
                 NavRow("Clé de licence", if (licenceKey == null) "Non activée" else "Activée", onActivate)
                 RowDivider()
-                Column(Modifier.padding(16.dp)) {
-                    InfoLine("ID de l'appareil", deviceId)
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InfoLine("Code du téléphone", deviceId)
+                    if (licenceExpiry != null) InfoLine("Valable jusqu'au", licenceExpiry)
                 }
                 RowDivider()
-                NavRow("Copier l'ID de l'appareil", null, onCopy)
+                NavRow("Copier le code du téléphone", null, onCopy)
             }
             Group("Abonnements") {
                 NavRow("Types d'abonnement", "$typesCount", onOpenTypes)

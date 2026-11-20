@@ -90,6 +90,7 @@ fun AppRoot(vm: AppViewModel) {
     val licenceKey by vm.settings.licenceKey.collectAsState()
     val lastBackup by vm.settings.lastBackupAt.collectAsState()
     val deviceId = remember { vm.licence.deviceId() }
+    val licenceExpiry = remember(licenceKey) { vm.licence.info(licenceKey)?.let { formatDay(it.expiry.toEpochDay()) } }
 
     val stack = remember { mutableStateListOf<Route>(Route.Splash) }
     val route = stack.last()
@@ -198,7 +199,8 @@ fun AppRoot(vm: AppViewModel) {
                     deviceId = deviceId,
                     error = activationError,
                     busy = busy,
-                    onCopy = { Actions.copy(ctx, "ID Echeo", deviceId) },
+                    onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
+                    onSendCode = { Actions.whatsappShare(ctx, "Bonjour, voici le code de mon téléphone pour activer Echeo : $deviceId") },
                     onActivate = { key ->
                         scope.launch {
                             busy = true
@@ -218,7 +220,8 @@ fun AppRoot(vm: AppViewModel) {
                     deviceId = deviceId,
                     message = r.message,
                     onNewKey = { go(Route.Activation) },
-                    onCopy = { Actions.copy(ctx, "ID Echeo", deviceId) },
+                    onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
+                    onSendCode = { Actions.whatsappShare(ctx, "Bonjour, voici le code de mon téléphone pour activer Echeo : $deviceId") },
                 )
 
                 is Route.Main -> when (r.tab) {
@@ -263,6 +266,7 @@ fun AppRoot(vm: AppViewModel) {
                         typesCount = data.types.size,
                         deviceId = deviceId,
                         licenceKey = licenceKey,
+                        licenceExpiry = licenceExpiry,
                         onWarnDays = { vm.settings.setWarnDays(it) },
                         onReminderHour = {
                             vm.settings.setReminderHour(it)
@@ -273,7 +277,7 @@ fun AppRoot(vm: AppViewModel) {
                         onOpenMessages = { go(Route.Messages) },
                         onOpenBackup = { go(Route.Backup) },
                         onActivate = { go(Route.Activation) },
-                        onCopy = { Actions.copy(ctx, "ID Echeo", deviceId) },
+                        onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
                     )
                 }
 
