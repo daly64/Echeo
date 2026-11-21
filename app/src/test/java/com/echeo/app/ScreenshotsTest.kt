@@ -61,14 +61,14 @@ class ScreenshotsTest {
     @Test
     fun tableau_de_bord() = paparazzi.snapshot {
         Frame(Tab.Home) {
-            DashboardContent("Ma boutique", sample.counts(), sample, {}, {}, {})
+            DashboardContent("Ma boutique", "Mohamed", sample.counts(), sample, {}, {}, {})
         }
     }
 
     @Test
     fun tableau_de_bord_vide() = paparazzi.snapshot {
         Frame(Tab.Home) {
-            DashboardContent("Ma boutique", emptyList<ClientSummary>().counts(), emptyList(), {}, {}, {})
+            DashboardContent("Ma boutique", "Mohamed", emptyList<ClientSummary>().counts(), emptyList(), {}, {}, {})
         }
     }
 
@@ -120,7 +120,7 @@ class ScreenshotsTest {
     @Test
     fun parametres_licence() = paparazzi.snapshot {
         Frame(Tab.Settings) {
-            SettingsScreen(5, 9, true, 11, "7RFV-JX2C", "051GR-YB6WG-XQG2Z-GH6KP", "20/11/2027", {}, {}, {}, {}, {}, {}, {}, {})
+            SettingsScreen("Mohamed", "Ma boutique", 5, 9, true, 11, "7RFV-JX2C", "051GR-YB6WG-XQG2Z-GH6KP", "20/11/2027", { _, _ -> }, {}, {}, {}, {}, {}, {}, {}, {})
         }
     }
 }
