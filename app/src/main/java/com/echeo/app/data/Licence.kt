@@ -24,8 +24,15 @@ object LicenceConfig {
     const val SERVER = "https://forge-licence-api.vercel.app"
 }
 
+/** Pourquoi la licence n'est pas valide : pas de licence, bloquée à distance, ou expirée. */
+enum class LicenceProblem { INVALID, BLOCKED, EXPIRED }
+
 /** La licence est refusée : le message explique pourquoi, il est affiché à l'utilisateur. */
-class LicenceRejected(message: String) : Exception(message)
+class LicenceRejected(
+    message: String,
+    val problem: LicenceProblem = LicenceProblem.INVALID,
+    val expiry: LocalDate? = null,
+) : Exception(message)
 
 /**
  * Licence vérifiée par le serveur de Forge Licence.
@@ -125,7 +132,8 @@ class LicenceService(private val context: Context) {
                 Result.success(accept(answer))
             } else {
                 forget()
-                throw LicenceRejected(checkMessage(answer.optString("state"), answer))
+                val state = answer.optString("state")
+                throw LicenceRejected(checkMessage(state, answer), problemOf(state), expiryOf(answer))
             }
         } catch (e: LicenceRejected) {
             Result.failure(e)
@@ -223,6 +231,15 @@ class LicenceService(private val context: Context) {
         "format" -> "Données invalides."
         else -> "Enregistrement sur le serveur impossible. Réessayez."
     }
+
+    private fun problemOf(state: String): LicenceProblem = when (state) {
+        "blocked" -> LicenceProblem.BLOCKED
+        "expired" -> LicenceProblem.EXPIRED
+        else -> LicenceProblem.INVALID
+    }
+
+    private fun expiryOf(answer: JSONObject): LocalDate? =
+        runCatching { Instant.parse(answer.getString("expiresAt")).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()
 
     private fun checkMessage(state: String, answer: JSONObject): String = when (state) {
         "blocked" -> "Cette licence a été bloquée. Contactez votre fournisseur."

@@ -27,6 +27,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.echeo.app.data.BackupCodec
 import com.echeo.app.data.LicenceConfig
+import com.echeo.app.data.LicenceProblem
+import com.echeo.app.data.LicenceRejected
+import com.echeo.app.ui.screens.LicenceBlockedScreen
+import com.echeo.app.ui.screens.LicenceExpiredScreen
 import com.echeo.app.domain.formatDay
 import com.echeo.app.domain.reminderText
 import com.echeo.app.notify.ExpiryWorker
@@ -57,6 +61,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 /** Écrans de l'app. La pile permet de revenir en arrière avec le bouton retour. */
 sealed interface Route {
@@ -64,7 +69,7 @@ sealed interface Route {
     data class Welcome(val page: Int) : Route
     data object Offline : Route
     data object Activation : Route
-    data class LicenceInvalid(val message: String) : Route
+    data class LicenceInvalid(val problem: LicenceProblem, val message: String, val expiry: LocalDate?) : Route
     data class Main(val tab: Tab) : Route
     data object NewClient : Route
     data class Client(val id: Long) : Route
@@ -130,7 +135,8 @@ fun AppRoot(vm: AppViewModel) {
                     return@launch
                 }
                 vm.licence.verify(key).onFailure { e ->
-                    replaceAll(Route.LicenceInvalid(e.message ?: "Licence non valide."))
+                    val rejected = e as? LicenceRejected
+                    replaceAll(Route.LicenceInvalid(rejected?.problem ?: LicenceProblem.INVALID, e.message ?: "Licence non valide.", rejected?.expiry))
                     return@launch
                 }
             }
@@ -259,13 +265,28 @@ fun AppRoot(vm: AppViewModel) {
                     },
                 )
 
-                is Route.LicenceInvalid -> LicenceInvalidScreen(
-                    deviceId = deviceId,
-                    message = r.message,
-                    onNewKey = { go(Route.Activation) },
-                    onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
-                    onSendCode = { Actions.whatsappShare(ctx, "Bonjour, voici le code de mon téléphone pour activer Echeo : $deviceId") },
-                )
+                is Route.LicenceInvalid -> when (r.problem) {
+                    LicenceProblem.INVALID -> LicenceInvalidScreen(
+                        deviceId = deviceId,
+                        message = r.message,
+                        onNewKey = { go(Route.Activation) },
+                        onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
+                        onSendCode = { Actions.whatsappShare(ctx, "Bonjour, voici le code de mon téléphone pour activer Echeo : $deviceId") },
+                    )
+                    LicenceProblem.BLOCKED -> LicenceBlockedScreen(
+                        deviceId = deviceId,
+                        message = r.message,
+                        onNewKey = { go(Route.Activation) },
+                        onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
+                    )
+                    LicenceProblem.EXPIRED -> LicenceExpiredScreen(
+                        deviceId = deviceId,
+                        message = r.message,
+                        expiry = r.expiry,
+                        onNewKey = { go(Route.Activation) },
+                        onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
+                    )
+                }
 
                 is Route.Main -> when (r.tab) {
                     Tab.Home -> DashboardContent(

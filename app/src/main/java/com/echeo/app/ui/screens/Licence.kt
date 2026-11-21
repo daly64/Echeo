@@ -18,9 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import java.time.LocalDate
 import com.echeo.app.R
+import com.echeo.app.domain.formatDay
 import com.echeo.app.ui.components.*
 import com.echeo.app.ui.theme.EcheoColors
 
@@ -137,6 +140,72 @@ fun LicenceInvalidScreen(
             DarkButton("Demander une nouvelle clé", onNewKey, Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             SecondaryButton("Envoyer le code par WhatsApp", onSendCode, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            SecondaryButton("Copier le code", onCopy, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@Composable
+fun LicenceBlockedScreen(
+    deviceId: String,
+    message: String,
+    onNewKey: () -> Unit,
+    onCopy: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize().background(EcheoColors.GrisClair)) {
+        CenteredMessage(
+            icon = R.drawable.ic_lock,
+            iconTint = EcheoColors.BientotTexte,
+            iconBg = EcheoColors.BientotFond,
+            title = "Licence bloquée",
+            text = message,
+        ) {
+            IdBox(deviceId)
+            Spacer(Modifier.height(16.dp))
+            DarkButton("Saisir une clé", onNewKey, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            SecondaryButton("Copier le code", onCopy, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@Composable
+fun LicenceExpiredScreen(
+    deviceId: String,
+    message: String,
+    expiry: LocalDate?,
+    onNewKey: () -> Unit,
+    onCopy: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize().background(EcheoColors.GrisClair)) {
+        CenteredMessage(
+            icon = R.drawable.ic_calendar_x,
+            iconTint = EcheoColors.ExpireTexte,
+            iconBg = EcheoColors.ExpireFond,
+            title = "Licence expirée",
+            text = message,
+        ) {
+            if (expiry != null) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(EcheoColors.ExpireFond)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("Expirée le", style = MaterialTheme.typography.bodyMedium.copy(color = EcheoColors.ExpireTexte))
+                    Text(
+                        formatDay(expiry.toEpochDay()),
+                        style = MaterialTheme.typography.bodyMedium.copy(color = EcheoColors.ExpireTexte, fontWeight = FontWeight.Bold),
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+            IdBox(deviceId)
+            Spacer(Modifier.height(16.dp))
+            DarkButton("Saisir une nouvelle clé", onNewKey, Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             SecondaryButton("Copier le code", onCopy, Modifier.fillMaxWidth())
         }
