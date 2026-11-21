@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,8 +14,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.echeo.app.data.BackupFiles
 import com.echeo.app.data.Settings
 import com.echeo.app.domain.formatDateTime
 import com.echeo.app.ui.components.*
@@ -183,6 +187,10 @@ fun MessagesScreen(
 @Composable
 fun BackupScreen(
     lastBackupAt: Long,
+    autoBackup: Boolean,
+    lastAutoBackupAt: Long,
+    autoLocation: String,
+    onAutoBackup: (Boolean) -> Unit,
     onBack: () -> Unit,
     onExport: () -> Unit,
     onRestore: () -> Unit,
@@ -198,8 +206,29 @@ fun BackupScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             EcheoCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Sauvegarde automatique", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = autoBackup,
+                            onCheckedChange = onAutoBackup,
+                            colors = SwitchDefaults.colors(checkedTrackColor = EcheoColors.Turquoise),
+                        )
+                    }
+                    Text(
+                        if (autoBackup) "Une copie est enregistrée chaque jour dans le dossier $autoLocation du téléphone. Les ${BackupFiles.KEEP} dernières copies sont gardées."
+                        else "Désactivée : aucune copie automatique n'est enregistrée.",
+                        style = MaterialTheme.typography.bodyMedium.copy(color = EcheoColors.TexteSecondaire),
+                    )
+                    Text(
+                        "Dernière copie automatique : " + if (lastAutoBackupAt == 0L) "aucune pour le moment" else formatDateTime(lastAutoBackupAt),
+                        style = MaterialTheme.typography.bodyMedium.copy(color = EcheoColors.TexteSecondaire),
+                    )
+                }
+            }
+            EcheoCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Dernière sauvegarde", style = MaterialTheme.typography.titleMedium)
+                    Text("Dernière sauvegarde manuelle", style = MaterialTheme.typography.titleMedium)
                     Text(
                         if (lastBackupAt == 0L) "Aucune pour le moment" else formatDateTime(lastBackupAt),
                         style = MaterialTheme.typography.bodyMedium.copy(color = EcheoColors.TexteSecondaire),
@@ -207,7 +236,7 @@ fun BackupScreen(
                 }
             }
             Text(
-                "La sauvegarde crée un fichier sur ce téléphone. Gardez-le en lieu sûr (Drive, clé USB, e-mail) : il permet de retrouver vos clients et abonnements.",
+                "Pour changer de téléphone, copiez le dossier de sauvegarde (ou envoyez un fichier par Drive ou e-mail), puis touchez « Restaurer une sauvegarde » sur le nouveau téléphone et choisissez ce fichier.",
                 style = MaterialTheme.typography.bodyMedium.copy(color = EcheoColors.TexteSecondaire),
             )
             PrimaryButton("Créer une sauvegarde", onExport, Modifier.fillMaxWidth())

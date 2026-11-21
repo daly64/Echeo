@@ -17,7 +17,12 @@ import com.echeo.app.ui.components.EcheoBottomBar
 import com.echeo.app.ui.components.Tab
 import com.echeo.app.ui.dashboard.DashboardContent
 import com.echeo.app.ui.screens.ActivationScreen
+import com.echeo.app.data.LicenceIssue
+import com.echeo.app.data.SubscriptionTypeEntity
+import com.echeo.app.ui.screens.BackupScreen
 import com.echeo.app.ui.screens.LicenceInvalidScreen
+import com.echeo.app.ui.screens.TypeFormScreen
+import com.echeo.app.ui.screens.TypesScreen
 import com.echeo.app.ui.screens.SettingsScreen
 import com.echeo.app.ui.theme.EcheoColors
 import com.echeo.app.ui.theme.EcheoTheme
@@ -111,10 +116,55 @@ class ScreenshotsTest {
     }
 
     @Test
+    fun licence_bloquee() = paparazzi.snapshot {
+        EcheoTheme {
+            LicenceInvalidScreen(
+                "7RFV-JX2C",
+                LicenceIssue.BLOCKED,
+                "Votre licence a été bloquée par votre fournisseur. Echeo est verrouillée, mais vos données sont conservées. Contactez votre fournisseur pour la réactiver.",
+                {}, {}, {},
+            )
+        }
+    }
+
+    @Test
+    fun licence_expiree() = paparazzi.snapshot {
+        EcheoTheme {
+            LicenceInvalidScreen(
+                "7RFV-JX2C",
+                LicenceIssue.EXPIRED,
+                "Votre licence a pris fin le 20/11/2026. Echeo est verrouillée, mais vos données sont conservées. Demandez une nouvelle clé pour continuer.",
+                {}, {}, {},
+            )
+        }
+    }
+
+    @Test
     fun licence_non_valide() = paparazzi.snapshot {
         EcheoTheme {
-            LicenceInvalidScreen("7RFV-JX2C", "Licence expirée le 20/11/2027. Demandez une nouvelle clé.", {}, {}, {})
+            LicenceInvalidScreen("7RFV-JX2C", LicenceIssue.NONE, "Aucune licence active sur ce téléphone. Activez une clé.", {}, {}, {})
         }
+    }
+
+    private val types = listOf(
+        SubscriptionTypeEntity(id = 1, name = "Netflix", durations = "1,3,12", icon = "N", color = 0xFFE50914),
+        SubscriptionTypeEntity(id = 2, name = "IPTV", durations = "1,3,6,12", price = 25.0, icon = "TV", color = 0xFF0F2A4A),
+        SubscriptionTypeEntity(id = 3, name = "Alpha", durations = "3,12", icon = "A", color = 0xFF19B5A5),
+    )
+
+    @Test
+    fun types_d_abonnement() = paparazzi.snapshot {
+        EcheoTheme { TypesScreen(types, mapOf(1L to 12, 2L to 31, 3L to 4), {}, {}, {}, { _, _ -> }) }
+    }
+
+    @Test
+    fun type_modifier() = paparazzi.snapshot {
+        EcheoTheme { TypeFormScreen(types[1], {}, {}) }
+    }
+
+    @Test
+    fun sauvegarde_automatique() = paparazzi.snapshot {
+        EcheoTheme { BackupScreen(0L, true, 1_795_240_800_000L, "Documents/Echeo", {}, {}, {}, {}) }
     }
 
     @Test

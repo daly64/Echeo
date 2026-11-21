@@ -38,6 +38,13 @@ class Settings(context: Context) {
     private val _lastBackup = MutableStateFlow(prefs.getLong(KEY_LAST_BACKUP, 0L))
     val lastBackupAt: StateFlow<Long> = _lastBackup.asStateFlow()
 
+    private val _autoBackup = MutableStateFlow(prefs.getBoolean(KEY_AUTO_BACKUP, true))
+    /** Sauvegarde automatique quotidienne : activée par défaut. */
+    val autoBackupEnabled: StateFlow<Boolean> = _autoBackup.asStateFlow()
+
+    private val _lastAutoBackup = MutableStateFlow(prefs.getLong(KEY_LAST_AUTO_BACKUP, 0L))
+    val lastAutoBackupAt: StateFlow<Long> = _lastAutoBackup.asStateFlow()
+
     val onboardingDone: Boolean get() = prefs.getBoolean(KEY_ONBOARDING, false)
 
     fun finishOnboarding() {
@@ -89,6 +96,16 @@ class Settings(context: Context) {
         _lastBackup.value = value
     }
 
+    fun setAutoBackup(value: Boolean) {
+        prefs.edit().putBoolean(KEY_AUTO_BACKUP, value).apply()
+        _autoBackup.value = value
+    }
+
+    fun setLastAutoBackup(value: Long) {
+        prefs.edit().putLong(KEY_LAST_AUTO_BACKUP, value).apply()
+        _lastAutoBackup.value = value
+    }
+
     companion object {
         const val DEFAULT_SHOP = "Ma boutique"
         const val DEFAULT_MANAGER = ""
@@ -107,6 +124,8 @@ class Settings(context: Context) {
         private const val KEY_WA_AFTER = "wa_after"
         private const val KEY_LICENCE = "licence_key"
         private const val KEY_LAST_BACKUP = "last_backup"
+        private const val KEY_AUTO_BACKUP = "auto_backup"
+        private const val KEY_LAST_AUTO_BACKUP = "last_auto_backup"
         private const val KEY_ONBOARDING = "onboarding_done"
     }
 }

@@ -24,8 +24,11 @@ object LicenceConfig {
     const val SERVER = "https://forge-licence-api.vercel.app"
 }
 
+/** Pourquoi la licence est refusée : chaque cas a son propre écran et son propre message. */
+enum class LicenceIssue { BLOCKED, EXPIRED, NONE, OFFLINE, OTHER }
+
 /** La licence est refusée : le message explique pourquoi, il est affiché à l'utilisateur. */
-class LicenceRejected(message: String) : Exception(message)
+class LicenceRejected(message: String, val issue: LicenceIssue = LicenceIssue.OTHER) : Exception(message)
 
 /**
  * Licence vérifiée par le serveur de Forge Licence.
@@ -125,7 +128,7 @@ class LicenceService(private val context: Context) {
                 Result.success(accept(answer))
             } else {
                 forget()
-                throw LicenceRejected(checkMessage(answer.optString("state"), answer))
+                throw checkRejection(answer.optString("state"), answer)
             }
         } catch (e: LicenceRejected) {
             Result.failure(e)
@@ -167,7 +170,7 @@ class LicenceService(private val context: Context) {
 
     /** Sans Internet, Echeo ne s'ouvre pas : la vérification en ligne est obligatoire à chaque ouverture. */
     private fun offline(): Result<SerialLicence> =
-        Result.failure(LicenceRejected("Connexion requise pour ouvrir Echeo. Activez Internet puis réessayez."))
+        Result.failure(LicenceRejected("Connexion requise pour ouvrir Echeo. Activez Internet puis réessayez.", LicenceIssue.OFFLINE))
 
     private fun accept(answer: JSONObject): SerialLicence {
         val zone = ZoneId.systemDefault()
@@ -224,13 +227,21 @@ class LicenceService(private val context: Context) {
         else -> "Enregistrement sur le serveur impossible. Réessayez."
     }
 
-    private fun checkMessage(state: String, answer: JSONObject): String = when (state) {
-        "blocked" -> "Cette licence a été bloquée. Contactez votre fournisseur."
+    private fun checkRejection(state: String, answer: JSONObject): LicenceRejected = when (state) {
+        "blocked" -> LicenceRejected(
+            "Votre licence a été bloquée par votre fournisseur. Echeo est verrouillée, mais vos données sont conservées. " +
+                "Contactez votre fournisseur pour la réactiver.",
+            LicenceIssue.BLOCKED,
+        )
         "expired" -> {
             val end = runCatching { Instant.parse(answer.getString("expiresAt")).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()
-            if (end != null) "Licence expirée le ${formatDay(end.toEpochDay())}. Demandez une nouvelle clé." else "Licence expirée. Demandez une nouvelle clé."
+            val since = if (end != null) "Votre licence a pris fin le ${formatDay(end.toEpochDay())}." else "Votre licence est arrivée à son terme."
+            LicenceRejected(
+                "$since Echeo est verrouillée, mais vos données sont conservées. Demandez une nouvelle clé pour continuer.",
+                LicenceIssue.EXPIRED,
+            )
         }
-        else -> "Aucune licence active sur ce téléphone. Activez une clé."
+        else -> LicenceRejected("Aucune licence active sur ce téléphone. Activez une clé.", LicenceIssue.NONE)
     }
 
     private companion object {

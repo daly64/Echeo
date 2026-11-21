@@ -1,6 +1,7 @@
 package com.echeo.app
 
 import android.app.Application
+import com.echeo.app.data.AutoBackupWorker
 import com.echeo.app.data.EcheoDatabase
 import com.echeo.app.data.EcheoRepository
 import com.echeo.app.data.LicenceService
@@ -19,5 +20,6 @@ class EcheoApp : Application() {
         super.onCreate()
         ExpiryNotifier.createChannel(this)
         ExpiryWorker.schedule(this, settings.reminderHour.value)
+        AutoBackupWorker.schedule(this, settings)
     }
 }

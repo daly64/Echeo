@@ -21,6 +21,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.echeo.app.R
+import com.echeo.app.data.LicenceIssue
 import com.echeo.app.ui.components.*
 import com.echeo.app.ui.theme.EcheoColors
 
@@ -116,27 +117,42 @@ fun ActivationScreen(
     }
 }
 
+/** Écran de licence refusée : « Licence bloquée », « Licence expirée » ou « Licence non valide ». */
 @Composable
 fun LicenceInvalidScreen(
     deviceId: String,
+    issue: LicenceIssue,
     message: String,
     onNewKey: () -> Unit,
     onCopy: () -> Unit,
     onSendCode: () -> Unit,
 ) {
+    val title = when (issue) {
+        LicenceIssue.BLOCKED -> "Licence bloquée"
+        LicenceIssue.EXPIRED -> "Licence expirée"
+        else -> "Licence non valide"
+    }
     Column(Modifier.fillMaxSize().background(EcheoColors.GrisClair)) {
         CenteredMessage(
             icon = R.drawable.ic_lock,
             iconTint = EcheoColors.ExpireTexte,
             iconBg = EcheoColors.ExpireFond,
-            title = "Licence non valide",
+            title = title,
             text = message,
         ) {
             IdBox(deviceId)
             Spacer(Modifier.height(16.dp))
-            DarkButton("Demander une nouvelle clé", onNewKey, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(8.dp))
-            SecondaryButton("Envoyer le code par WhatsApp", onSendCode, Modifier.fillMaxWidth())
+            when (issue) {
+                // Bloquée : seul le fournisseur peut réactiver, pas de nouvelle clé à demander.
+                LicenceIssue.BLOCKED -> {
+                    DarkButton("Contacter mon fournisseur (WhatsApp)", onSendCode, Modifier.fillMaxWidth())
+                }
+                else -> {
+                    DarkButton("Demander une nouvelle clé", onNewKey, Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    SecondaryButton("Envoyer le code par WhatsApp", onSendCode, Modifier.fillMaxWidth())
+                }
+            }
             Spacer(Modifier.height(8.dp))
             SecondaryButton("Copier le code", onCopy, Modifier.fillMaxWidth())
         }

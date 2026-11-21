@@ -25,8 +25,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.echeo.app.data.AutoBackupWorker
 import com.echeo.app.data.BackupCodec
+import com.echeo.app.data.BackupStore
 import com.echeo.app.data.LicenceConfig
+import com.echeo.app.data.LicenceIssue
+import com.echeo.app.data.LicenceRejected
 import com.echeo.app.domain.formatDay
 import com.echeo.app.domain.reminderText
 import com.echeo.app.notify.ExpiryWorker
@@ -44,7 +48,7 @@ import com.echeo.app.ui.screens.HistoryScreen
 import com.echeo.app.ui.screens.LicenceInvalidScreen
 import com.echeo.app.ui.screens.MessagesScreen
 import com.echeo.app.ui.screens.NewClientScreen
-import com.echeo.app.ui.screens.NewTypeScreen
+import com.echeo.app.ui.screens.TypeFormScreen
 import com.echeo.app.ui.screens.OfflineScreen
 import com.echeo.app.ui.screens.RemindersScreen
 import com.echeo.app.ui.screens.RenewScreen
@@ -64,7 +68,7 @@ sealed interface Route {
     data class Welcome(val page: Int) : Route
     data object Offline : Route
     data object Activation : Route
-    data class LicenceInvalid(val message: String) : Route
+    data class LicenceInvalid(val issue: LicenceIssue, val message: String) : Route
     data class Main(val tab: Tab) : Route
     data object NewClient : Route
     data class Client(val id: Long) : Route
@@ -73,6 +77,7 @@ sealed interface Route {
     data class History(val subId: Long) : Route
     data object Types : Route
     data object NewType : Route
+    data class EditType(val typeId: Long) : Route
     data object Messages : Route
     data object Backup : Route
 }
@@ -89,6 +94,8 @@ fun AppRoot(vm: AppViewModel) {
     val waAfter by vm.settings.waAfter.collectAsState()
     val licenceKey by vm.settings.licenceKey.collectAsState()
     val lastBackup by vm.settings.lastBackupAt.collectAsState()
+    val autoBackup by vm.settings.autoBackupEnabled.collectAsState()
+    val lastAutoBackup by vm.settings.lastAutoBackupAt.collectAsState()
     val deviceId = remember { vm.licence.deviceId() }
     val licenceExpiry = remember(licenceKey) { vm.licence.info(licenceKey)?.let { if (it.lifetime) "à vie" else formatDay(it.expiry.toEpochDay()) } }
 
@@ -130,7 +137,13 @@ fun AppRoot(vm: AppViewModel) {
                     return@launch
                 }
                 vm.licence.verify(key).onFailure { e ->
-                    replaceAll(Route.LicenceInvalid(e.message ?: "Licence non valide."))
+                    val issue = (e as? LicenceRejected)?.issue ?: LicenceIssue.OTHER
+                    // Sans Internet, ce n'est pas la licence qui est en cause : écran « Connexion requise ».
+                    if (issue == LicenceIssue.OFFLINE) {
+                        replaceAll(Route.Offline)
+                    } else {
+                        replaceAll(Route.LicenceInvalid(issue, e.message ?: "Licence non valide."))
+                    }
                     return@launch
                 }
             }
@@ -261,10 +274,18 @@ fun AppRoot(vm: AppViewModel) {
 
                 is Route.LicenceInvalid -> LicenceInvalidScreen(
                     deviceId = deviceId,
+                    issue = r.issue,
                     message = r.message,
                     onNewKey = { go(Route.Activation) },
                     onCopy = { Actions.copy(ctx, "Code Echeo", deviceId) },
-                    onSendCode = { Actions.whatsappShare(ctx, "Bonjour, voici le code de mon téléphone pour activer Echeo : $deviceId") },
+                    onSendCode = {
+                        val text = when (r.issue) {
+                            LicenceIssue.BLOCKED -> "Bonjour, ma licence Echeo est bloquée. Voici le code de mon téléphone : $deviceId"
+                            LicenceIssue.EXPIRED -> "Bonjour, ma licence Echeo a expiré. Voici le code de mon téléphone pour la renouveler : $deviceId"
+                            else -> "Bonjour, voici le code de mon téléphone pour activer Echeo : $deviceId"
+                        }
+                        Actions.whatsappShare(ctx, text)
+                    },
                 )
 
                 is Route.Main -> when (r.tab) {
@@ -424,10 +445,12 @@ fun AppRoot(vm: AppViewModel) {
                     usage = data.subViews.groupingBy { it.typeId }.eachCount(),
                     onBack = { back() },
                     onAdd = { go(Route.NewType) },
+                    onEdit = { go(Route.EditType(it.id)) },
                     onToggle = { t, enabled -> scope.launch { vm.repo.saveType(t.copy(enabled = enabled)) } },
                 )
 
-                Route.NewType -> NewTypeScreen(
+                Route.NewType -> TypeFormScreen(
+                    initial = null,
                     onBack = { back() },
                     onSave = { type ->
                         scope.launch {
@@ -436,6 +459,25 @@ fun AppRoot(vm: AppViewModel) {
                         }
                     },
                 )
+
+                is Route.EditType -> {
+                    val type = data.types.firstOrNull { it.id == r.typeId }
+                    if (type == null) {
+                        LaunchedEffect(Unit) { back() }
+                    } else {
+                        TypeFormScreen(
+                            initial = type,
+                            onBack = { back() },
+                            onSave = { edited ->
+                                scope.launch {
+                                    vm.repo.saveType(edited)
+                                    toast("Type modifié")
+                                    back()
+                                }
+                            },
+                        )
+                    }
+                }
 
                 Route.Messages -> MessagesScreen(
                     before = waBefore,
@@ -451,6 +493,13 @@ fun AppRoot(vm: AppViewModel) {
 
                 Route.Backup -> BackupScreen(
                     lastBackupAt = lastBackup,
+                    autoBackup = autoBackup,
+                    lastAutoBackupAt = lastAutoBackup,
+                    autoLocation = remember { BackupStore(ctx).locationLabel() },
+                    onAutoBackup = {
+                        vm.settings.setAutoBackup(it)
+                        if (it) AutoBackupWorker.catchUp(ctx, vm.settings)
+                    },
                     onBack = { back() },
                     onExport = { exportLauncher.launch("echeo-sauvegarde.json") },
                     onRestore = { importLauncher.launch(arrayOf("*/*")) },

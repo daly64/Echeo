@@ -36,6 +36,7 @@ fun TypesScreen(
     usage: Map<Long, Int>,
     onBack: () -> Unit,
     onAdd: () -> Unit,
+    onEdit: (SubscriptionTypeEntity) -> Unit,
     onToggle: (SubscriptionTypeEntity, Boolean) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
@@ -48,7 +49,7 @@ fun TypesScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             items(types, key = { it.id }) { t ->
-                EcheoCard(Modifier.fillMaxWidth()) {
+                EcheoCard(Modifier.fillMaxWidth().clickable { onEdit(t) }) {
                     Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconSquare(t.icon, t.color)
                         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
@@ -56,6 +57,10 @@ fun TypesScreen(
                             Text(
                                 "${abonnementsLabel(usage[t.id] ?: 0)} · ${t.durationList.joinToString(", ")} mois",
                                 style = MaterialTheme.typography.bodyMedium.copy(color = EcheoColors.TexteSecondaire),
+                            )
+                            Text(
+                                "Toucher pour modifier",
+                                style = MaterialTheme.typography.bodySmall.copy(color = EcheoColors.Turquoise),
                             )
                         }
                         Switch(
@@ -84,20 +89,39 @@ private val COLOR_PALETTE = listOf(
     0xFF6B7280L,
 )
 
-/** Création d'un type personnalisé : nom, durées, prix facultatif, icône et couleur. */
+private fun priceText(price: Double?): String = when {
+    price == null -> ""
+    price % 1.0 == 0.0 -> price.toLong().toString()
+    else -> price.toString()
+}
+
+/**
+ * Création ou modification d'un type : nom, durées, prix facultatif, icône et couleur.
+ * Avec [initial], le formulaire modifie ce type (même ceux de la liste par défaut).
+ */
 @Composable
-fun NewTypeScreen(onBack: () -> Unit, onSave: (SubscriptionTypeEntity) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var durations by remember { mutableStateOf("1,3,6,12") }
-    var price by remember { mutableStateOf("") }
-    var iconText by remember { mutableStateOf("") }
-    var color by remember { mutableStateOf(COLOR_PALETTE[1]) }
+fun TypeFormScreen(
+    initial: SubscriptionTypeEntity?,
+    onBack: () -> Unit,
+    onSave: (SubscriptionTypeEntity) -> Unit,
+) {
+    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
+    var durations by remember { mutableStateOf(initial?.durations ?: "1,3,6,12") }
+    var price by remember { mutableStateOf(priceText(initial?.price)) }
+    // Lettre personnalisée seulement si elle diffère de la 1re lettre du nom.
+    var iconText by remember {
+        mutableStateOf(
+            if (initial != null && initial.icon != initial.name.trim().take(1).uppercase()) initial.icon else "",
+        )
+    }
+    var color by remember { mutableStateOf(initial?.color ?: COLOR_PALETTE[1]) }
+    val palette = if (color in COLOR_PALETTE) COLOR_PALETTE else COLOR_PALETTE + color
     val letter = iconText.ifBlank { name.trim().take(1).uppercase() }.ifBlank { "?" }
     val cleanDurations = durations.split(",").mapNotNull { it.trim().toIntOrNull()?.takeIf { m -> m > 0 } }
     val canSave = name.isNotBlank() && cleanDurations.isNotEmpty()
 
     Column(Modifier.fillMaxSize()) {
-        TopBar("Nouveau type", onBack)
+        TopBar(if (initial == null) "Nouveau type" else "Modifier le type", onBack)
         Column(
             Modifier
                 .weight(1f)
@@ -133,7 +157,7 @@ fun NewTypeScreen(onBack: () -> Unit, onSave: (SubscriptionTypeEntity) -> Unit) 
             )
             Text("Couleur", style = MaterialTheme.typography.bodyMedium.copy(color = EcheoColors.TexteSecondaire))
             ChipRow {
-                COLOR_PALETTE.forEach { c ->
+                palette.forEach { c ->
                     val selected = c == color
                     Box(
                         Modifier
@@ -145,20 +169,34 @@ fun NewTypeScreen(onBack: () -> Unit, onSave: (SubscriptionTypeEntity) -> Unit) 
                     )
                 }
             }
+            if (initial != null) {
+                Text(
+                    "Les abonnements déjà créés gardent leur durée et leur date d'expiration. Le nom, l'icône et la couleur sont mis à jour partout.",
+                    style = MaterialTheme.typography.bodySmall.copy(color = EcheoColors.TexteSecondaire),
+                )
+            }
         }
         Box(Modifier.fillMaxWidth().padding(16.dp)) {
             PrimaryButton(
-                "Enregistrer le type",
+                if (initial == null) "Enregistrer le type" else "Enregistrer les modifications",
                 {
                     if (canSave) {
+                        val edited = SubscriptionTypeEntity(
+                            name = name.trim(),
+                            durations = cleanDurations.joinToString(","),
+                            price = price.toDoubleOrNull(),
+                            icon = letter,
+                            color = color,
+                            isCustom = true,
+                        )
                         onSave(
-                            SubscriptionTypeEntity(
-                                name = name.trim(),
-                                durations = cleanDurations.joinToString(","),
-                                price = price.toDoubleOrNull(),
-                                icon = letter,
-                                color = color,
-                                isCustom = true,
+                            if (initial == null) edited
+                            else initial.copy(
+                                name = edited.name,
+                                durations = edited.durations,
+                                price = edited.price,
+                                icon = edited.icon,
+                                color = edited.color,
                             ),
                         )
                     }
