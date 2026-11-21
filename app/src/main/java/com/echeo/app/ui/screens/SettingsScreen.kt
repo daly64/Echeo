@@ -3,7 +3,9 @@ package com.echeo.app.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +24,8 @@ private const val PICK_HOUR = "hour"
 
 @Composable
 fun SettingsScreen(
+    managerName: String,
+    shopName: String,
     warnDays: Int,
     reminderHour: Int,
     notify: Boolean,
@@ -29,6 +33,7 @@ fun SettingsScreen(
     deviceId: String,
     licenceKey: String?,
     licenceExpiry: String?,
+    onSaveProfile: (managerName: String, shopName: String) -> Unit,
     onWarnDays: (Int) -> Unit,
     onReminderHour: (Int) -> Unit,
     onNotify: (Boolean) -> Unit,
@@ -39,6 +44,7 @@ fun SettingsScreen(
     onCopy: () -> Unit,
 ) {
     var picker by remember { mutableStateOf<String?>(null) }
+    var editingProfile by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         EcheoHeader { HeaderTitle("Paramètres", null) }
         Column(
@@ -49,6 +55,11 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
+            Group("Boutique") {
+                NavRow("Nom du gérant", managerName.ifBlank { "Non renseigné" }) { editingProfile = true }
+                RowDivider()
+                NavRow("Nom de la boutique", shopName) { editingProfile = true }
+            }
             Group("Licence") {
                 NavRow("Clé de licence", if (licenceKey == null) "Non activée" else "Activée", onActivate)
                 RowDivider()
@@ -75,6 +86,28 @@ fun SettingsScreen(
                 NavRow("Sauvegarde et restauration", null, onOpenBackup)
             }
         }
+    }
+
+    if (editingProfile) {
+        var manager by remember { mutableStateOf(managerName) }
+        var shop by remember { mutableStateOf(shopName) }
+        AlertDialog(
+            onDismissRequest = { editingProfile = false },
+            title = { Text("Gérant et boutique") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Field("Nom du gérant", manager, { manager = it }, Modifier.fillMaxWidth())
+                    Field("Nom de la boutique", shop, { shop = it }, Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSaveProfile(manager.trim(), shop.trim().ifBlank { Settings.DEFAULT_SHOP })
+                    editingProfile = false
+                }) { Text("Enregistrer") }
+            },
+            dismissButton = { TextButton(onClick = { editingProfile = false }) { Text("Annuler") } },
+        )
     }
 
     when (picker) {

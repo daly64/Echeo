@@ -28,8 +28,11 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 
 /** Tout ce que l'interface affiche, recalculé à chaque changement de la base. */
+private data class SettingsNow(val shop: String, val manager: String, val warn: Int, val day: Long)
+
 data class AppData(
     val shopName: String = Settings.DEFAULT_SHOP,
+    val managerName: String = Settings.DEFAULT_MANAGER,
     val clients: List<ClientEntity> = emptyList(),
     val summaries: List<ClientSummary> = emptyList(),
     val subViews: List<SubView> = emptyList(),
@@ -57,20 +60,22 @@ class AppViewModel(app: EcheoApp) : ViewModel() {
         db.clientDao().observeAll(),
         db.subscriptionDao().observeAll(),
         db.subscriptionTypeDao().observeAll(),
-        combine(settings.shopName, settings.warnDays, today) { shop, warn, day -> Triple(shop, warn, day) },
+        combine(settings.shopName, settings.managerName, settings.warnDays, today) { shop, manager, warn, day ->
+            SettingsNow(shop, manager, warn, day)
+        },
     ) { clients, subs, types, settingsNow ->
-        val (shop, warn, day) = settingsNow
-        val views = buildSubViews(clients, subs, types, day, warn)
+        val views = buildSubViews(clients, subs, types, settingsNow.day, settingsNow.warn)
         val summaries = clientSummaries(clients, views)
         AppData(
-            shopName = shop,
+            shopName = settingsNow.shop,
+            managerName = settingsNow.manager,
             clients = clients,
             summaries = summaries,
             subViews = views,
             types = types,
             counts = summaries.counts(),
             subscriptionCount = subs.size,
-            today = day,
+            today = settingsNow.day,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppData())
 

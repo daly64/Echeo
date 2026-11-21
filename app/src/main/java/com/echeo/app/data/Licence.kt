@@ -143,6 +143,28 @@ class LicenceService(private val context: Context) {
         return SerialLicence(LocalDate.ofEpochDay(prefs.getLong(P_ISSUED, 0L)), expiry, lifetime)
     }
 
+    /** Enregistre sur le serveur le nom du gérant et celui de la boutique, pour le téléphone de cette licence. */
+    suspend fun saveProfile(managerName: String, shopName: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val answer = post(
+                "/api/profile",
+                JSONObject()
+                    .put("app", LicenceConfig.APP_CODE)
+                    .put("device", deviceId())
+                    .put("managerName", managerName)
+                    .put("shopName", shopName),
+            )
+            if (!answer.optBoolean("ok")) throw LicenceRejected(profileMessage(answer.optString("error")))
+            Result.success(Unit)
+        } catch (e: LicenceRejected) {
+            Result.failure(e)
+        } catch (e: IOException) {
+            Result.failure(LicenceRejected("Connexion impossible. Enregistré seulement sur ce téléphone."))
+        } catch (e: Exception) {
+            Result.failure(LicenceRejected("Enregistrement sur le serveur impossible. Réessayez."))
+        }
+    }
+
     /** Sans Internet, Echeo ne s'ouvre pas : la vérification en ligne est obligatoire à chaque ouverture. */
     private fun offline(): Result<SerialLicence> =
         Result.failure(LicenceRejected("Connexion requise pour ouvrir Echeo. Activez Internet puis réessayez."))
@@ -192,6 +214,14 @@ class LicenceService(private val context: Context) {
         "replaced" -> "Cette clé a été remplacée par une plus récente."
         "too_late" -> "Cette clé n'a pas été activée à temps. Demandez-en une nouvelle."
         else -> "Activation impossible. Réessayez."
+    }
+
+    private fun profileMessage(error: String): String = when (error) {
+        "none", "invalid" -> "Aucune licence active sur ce téléphone. Contactez votre fournisseur."
+        "blocked" -> "Cette licence a été bloquée. Les informations n'ont pas été enregistrées."
+        "expired" -> "Licence expirée. Les informations n'ont pas été enregistrées."
+        "format" -> "Données invalides."
+        else -> "Enregistrement sur le serveur impossible. Réessayez."
     }
 
     private fun checkMessage(state: String, answer: JSONObject): String = when (state) {

@@ -12,6 +12,10 @@ class Settings(context: Context) {
     private val _shopName = MutableStateFlow(prefs.getString(KEY_SHOP, null) ?: DEFAULT_SHOP)
     val shopName: StateFlow<String> = _shopName.asStateFlow()
 
+    private val _managerName = MutableStateFlow(prefs.getString(KEY_MANAGER, null) ?: DEFAULT_MANAGER)
+    /** Nom du gérant, affiché à la place de « Bonjour » sur le tableau de bord. */
+    val managerName: StateFlow<String> = _managerName.asStateFlow()
+
     private val _warnDays = MutableStateFlow(prefs.getInt(KEY_WARN_DAYS, DEFAULT_WARN_DAYS))
     /** Jours avant l'expiration où un abonnement passe en « Bientôt expiré ». */
     val warnDays: StateFlow<Int> = _warnDays.asStateFlow()
@@ -43,6 +47,11 @@ class Settings(context: Context) {
     fun setShopName(value: String) {
         prefs.edit().putString(KEY_SHOP, value).apply()
         _shopName.value = value
+    }
+
+    fun setManagerName(value: String) {
+        prefs.edit().putString(KEY_MANAGER, value).apply()
+        _managerName.value = value
     }
 
     fun setWarnDays(value: Int) {
@@ -82,6 +91,7 @@ class Settings(context: Context) {
 
     companion object {
         const val DEFAULT_SHOP = "Ma boutique"
+        const val DEFAULT_MANAGER = ""
         const val DEFAULT_WARN_DAYS = 7
         const val WA_BEFORE_DEFAULT =
             "Bonjour {nom}, votre abonnement {abonnement} expire le {date}. Souhaitez-vous le renouveler ?"
@@ -89,6 +99,7 @@ class Settings(context: Context) {
             "Bonjour {nom}, votre abonnement {abonnement} a expiré le {date}. Je peux le renouveler dès aujourd'hui."
 
         private const val KEY_SHOP = "shop_name"
+        private const val KEY_MANAGER = "manager_name"
         private const val KEY_WARN_DAYS = "warn_days"
         private const val KEY_HOUR = "reminder_hour"
         private const val KEY_NOTIFY = "notify"

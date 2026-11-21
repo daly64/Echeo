@@ -270,6 +270,7 @@ fun AppRoot(vm: AppViewModel) {
                 is Route.Main -> when (r.tab) {
                     Tab.Home -> DashboardContent(
                         shopName = data.shopName,
+                        managerName = data.managerName,
                         counts = data.counts,
                         clients = data.summaries,
                         onOpenReminders = { replaceAll(Route.Main(Tab.Reminders)) },
@@ -303,6 +304,17 @@ fun AppRoot(vm: AppViewModel) {
                         onMessages = { go(Route.Messages) },
                     )
                     Tab.Settings -> SettingsScreen(
+                        managerName = data.managerName,
+                        shopName = data.shopName,
+                        onSaveProfile = { manager, shop ->
+                            vm.settings.setManagerName(manager)
+                            vm.settings.setShopName(shop)
+                            scope.launch {
+                                vm.licence.saveProfile(manager, shop)
+                                    .onSuccess { toast("Enregistré sur le serveur") }
+                                    .onFailure { toast(it.message ?: "Enregistrement impossible") }
+                            }
+                        },
                         warnDays = warnDays,
                         reminderHour = hour,
                         notify = notify,

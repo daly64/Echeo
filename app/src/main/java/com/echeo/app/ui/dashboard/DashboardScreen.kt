@@ -38,6 +38,7 @@ import com.echeo.app.ui.theme.EcheoColors
 @Composable
 fun DashboardContent(
     shopName: String,
+    managerName: String,
     counts: DashboardCounts,
     clients: List<ClientSummary>,
     onOpenReminders: () -> Unit,
@@ -50,7 +51,7 @@ fun DashboardContent(
     Column(modifier.fillMaxSize()) {
         EcheoHeader {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { HeaderTitle(shopName, "Bonjour") }
+                Column(Modifier.weight(1f)) { HeaderTitle(shopName, managerName.ifBlank { null }) }
                 HeaderIconButton(
                     icon = R.drawable.ic_bell,
                     showDot = counts.soon + counts.expired > 0,
